@@ -9,8 +9,9 @@ from diffusers import AutoencoderKL, StableDiffusionPipeline
 from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer
 
 from animatediff import get_dir
+from animatediff.models.clip import CLIPSkipTextModel
 from animatediff.models.unet import UNet3DConditionModel
-from animatediff.pipelines import AnimationPipeline, get_text_embeddings
+from animatediff.pipelines import AnimationPipeline, load_text_embeddings
 from animatediff.schedulers import get_scheduler
 from animatediff.settings import InferenceConfig, ModelConfig
 from animatediff.utils.convert_lora_safetensor_to_diffusers import convert_lora
@@ -50,7 +51,7 @@ def create_pipeline(
     logger.info("Loading tokenizer...")
     tokenizer: CLIPTokenizer = CLIPTokenizer.from_pretrained(base_model, subfolder="tokenizer")
     logger.info("Loading text encoder...")
-    text_encoder: CLIPTextModel = CLIPTextModel.from_pretrained(base_model, subfolder="text_encoder")
+    text_encoder: CLIPSkipTextModel = CLIPSkipTextModel.from_pretrained(base_model, subfolder="text_encoder")
     logger.info("Loading VAE...")
     vae: AutoencoderKL = AutoencoderKL.from_pretrained(base_model, subfolder="vae")
     logger.info("Loading UNet...")
@@ -118,17 +119,7 @@ def create_pipeline(
     )
 
     # Load TI embeddings
-    text_embeds = get_text_embeddings()
-    if len(text_embeds) > 0:
-        logger.info(f"Loading {len(text_embeds)} TI embeddings...")
-        for token, embed in text_embeds.items():
-            try:
-                pipeline.load_textual_inversion({token: embed})
-            except Exception as e:
-                logger.error(f"Failed to load TI embedding: {token}", exc_info=True)
-                raise e
-    else:
-        logger.info("No TI embeddings found")
+    load_text_embeddings(pipeline)
 
     return pipeline
 
@@ -149,6 +140,7 @@ def run_inference(
     context_stride: int = 3,
     context_overlap: int = 4,
     context_schedule: str = "uniform",
+    clip_skip: int = 1,
     return_dict: bool = False,
 ):
     out_dir = Path(out_dir)  # ensure out_dir is a Path
@@ -171,6 +163,7 @@ def run_inference(
         context_stride=context_stride + 1,
         context_overlap=context_overlap,
         context_schedule=context_schedule,
+        clip_skip=clip_skip,
     )
     logger.info("Generation complete, saving...")
 
