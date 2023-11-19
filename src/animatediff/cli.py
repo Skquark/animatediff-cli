@@ -17,7 +17,7 @@ from animatediff.settings import (CKPT_EXTENSIONS, InferenceConfig,
                                   get_model_config)
 from animatediff.utils.model import checkpoint_to_pipeline, get_base_model
 from animatediff.utils.pipeline import get_context_params, send_to_device
-from animatediff.utils.util import path_from_cwd, save_frames, save_video
+from animatediff.utils.util import relative_path, save_frames, save_video
 
 cli: typer.Typer = typer.Typer(
     context_settings=dict(help_option_names=["-h", "--help"]),
@@ -34,7 +34,11 @@ logging.basicConfig(
     format="%(message)s",
     datefmt="%H:%M:%S",
     handlers=[
-        RichHandler(console=console, rich_tracebacks=True),
+        RichHandler(
+            console=console,
+            rich_tracebacks=True,
+            omit_repeated_times=False,
+        ),
     ],
     force=True,
 )
@@ -241,7 +245,7 @@ def generate(
     set_diffusers_verbosity_error()
 
     config_path = config_path.absolute()
-    logger.info(f"Using generation config: {path_from_cwd(config_path)}")
+    logger.info(f"Using generation config: {relative_path(config_path)}")
     model_config: ModelConfig = get_model_config(config_path)
     infer_config: InferenceConfig = get_infer_config()
 
@@ -260,7 +264,7 @@ def generate(
     # make the output directory
     save_dir = out_dir.joinpath(f"{time_str}-{model_config.save_name}")
     save_dir.mkdir(parents=True, exist_ok=True)
-    logger.info(f"Will save outputs to ./{path_from_cwd(save_dir)}")
+    logger.info(f"Will save outputs to ./{relative_path(save_dir)}")
 
     # beware the pipeline
     global pipeline
