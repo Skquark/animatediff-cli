@@ -1,6 +1,5 @@
 import logging
 import subprocess
-from math import ceil
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -43,9 +42,11 @@ def interpolate(
         ),
     ] = 8,
     out_fps: Annotated[
-        int,
-        typer.Option("--out-fps", "-F", help="Target FPS", show_default=True),
-    ] = 50,
+        Optional[int],
+        typer.Option(
+            "--out-fps", "-F", help="Target FPS (uses minterpolate, not recommended)", show_default=True
+        ),
+    ] = None,
     codec: Annotated[
         VideoCodec,
         typer.Option("--codec", "-c", help="Output video codec", show_default=True),
@@ -128,6 +129,9 @@ def interpolate(
 
     # now it is ffmpeg time
     logger.info("Creating ffmpeg encoder...")
+    if out_fps is None:
+        out_fps = in_fps * frame_multiplier
+
     encoder = FfmpegEncoder(
         frames_dir=rife_frames_dir,
         out_file=out_file,
@@ -135,6 +139,7 @@ def interpolate(
         in_fps=min(out_fps, in_fps * frame_multiplier),
         out_fps=out_fps,
         lossless=lossless,
+        interpolate=False,
     )
     logger.info("Encoding interpolated frames with ffmpeg...")
     result = encoder.encode()
